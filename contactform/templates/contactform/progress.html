@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 25px;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 30px;
+            background-color: #76c7c0;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            border-radius: 25px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        #progressMessage {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        #errorMessage {
+            margin-top: 20px;
+            font-size: 16px;
+            color: red;
+        }
+    </style>
+    <script>
+        function updateProgress(step, progress, message) {
+            const progressBar = document.getElementById("progressBar");
+            progressBar.style.width = progress + "%";
+            progressBar.innerHTML = progress + "%";
+            document.getElementById("progressMessage").innerText = message;
+
+            if (progress === 100) {
+                setTimeout(function () {
+                    window.location.href = "/success/";
+                }, 500);
+            }
+        }
+
+        function handleError(message) {
+            document.getElementById("errorMessage").innerText = message;
+            document.getElementById("progressMessage").innerText = "";
+            document.getElementById("progressBar").style.backgroundColor = "red";
+        }
+
+        function startProgress() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/send-email/", true);
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        updateProgress(4, response.progress, response.message);
+                    } else {
+                        handleError("Failed to send email. Please try again.");
+                    }
+                }
+            };
+
+            // Update progress manually in stages (for simulation)
+            updateProgress(1, 25, "Starting process...");
+            setTimeout(() => updateProgress(2, 50, "Processing form data..."), 1000);
+            setTimeout(() => updateProgress(3, 75, "Preparing email..."), 2000);
+
+            // Send the AJAX request to the server to process the email
+            setTimeout(() => xhr.send(new FormData(document.getElementById("progressForm"))), 3000);
+        }
+
+        window.onload = startProgress;
+    </script>
+</head>
+<body>
+    <div class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+    </div>
+    <p id="progressMessage">Starting...</p>
+    <p id="errorMessage"></p>
+    <form id="progressForm" style="display:none;" method="POST">
+        {% csrf_token %}
+        <!-- Include all form data as hidden fields here -->
+        {% for key, value in request.POST.items %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+        <!-- Include file inputs as hidden fields -->
+        {% for file_key, files in request.FILES.lists %}
+            {% for file in files %}
+                <input type="hidden" name="{{ file_key }}" value="{{ file.name }}">
+            {% endfor %}
+        {% endfor %}
+    </form>
+</body>
+</html>
